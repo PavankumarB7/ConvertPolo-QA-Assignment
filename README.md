@@ -67,12 +67,12 @@ storefront/API functionality for this module.
 
 The assignment provided hands-on experience with testing real e-commerce storefronts, designing test scenarios, identifying UI/functional issues, documenting defects, and performing API validation using Postman.
 
-## Tools Used
+## Tools & Test Environment
 
-- Chrome DevTools
+- Chrome DevTools – responsive/device emulation
 - Postman
 - Microsoft Excel
-- Browser responsive/device testing
+- Two Android mobile devices
 
 ## Month
 
