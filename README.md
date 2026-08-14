@@ -40,12 +40,12 @@ API testing was performed on the iTokri and AnotherSole Shopify stores.
 
 ## Deliverables
 
-| Deliverable | Description |
-|---|---|
-| Assignment PDF | Original assignment requirements |
+| Deliverable              | Description                                              |
+| ------------------------ | -------------------------------------------------------- |
+| Assignment PDF           | Original assignment requirements                         |
 | Test Cases & Bug Reports | Test scenarios, execution results and identified defects |
-| Postman Collection | API testing collection for iTokri and AnotherSole |
-| Test Evidence | Screenshots/evidence supporting identified issues |
+| Postman Collection       | API testing collection for iTokri and AnotherSole        |
+| Test Evidence            | Screenshots/evidence supporting identified issues        |
 
 ## API Testing
 
@@ -73,7 +73,6 @@ The assignment provided hands-on experience with testing real e-commerce storefr
 - Postman
 - Microsoft Excel
 - Browser responsive/device testing
-- GitHub
 
 ## Month
 
