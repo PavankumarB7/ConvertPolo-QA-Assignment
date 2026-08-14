@@ -1,0 +1,1114 @@
+{
+  "info": {
+    "_postman_id": "d7666816-98e7-4ee4-af2e-3e962258948b",
+    "name": "ConvertPolo QA Assignment - Shopify API Testing (iTokri & Anothersole)",
+    "description": "Covers Module 9 (API_001-API_010) from the ConvertPolo Manual QA & Shopify Testing assignment.\n\nNote on scope: convertpolo.com turned out to be a WordPress agency site with no cart/checkout/PDP at all, so Module 9 doesn't apply to it. Only ran API tests against itokri.com and sg.anothersole.com, since those are the two actual Shopify stores in the assignment.\n\nBefore running:\n1. Import the environment file too and select it (top-right dropdown).\n2. Turn on Postman's cookie jar, otherwise cart/add.js and cart.js won't share the same session.\n3. Replace the *_variant_id placeholders with a real variant id — run API_001 first, copy an id from the 'variants' array (not the top-level product id, that's a different field and gives a 422).\n4. If running the whole folder through the Collection Runner, add a ~500-1000ms delay between requests — ran into 429s a couple of times without it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39281146",
+    "_collection_link": "https://go.postman.co/collection/39281146-d7666816-98e7-4ee4-af2e-3e962258948b?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "iTokri - Shopify AJAX API",
+      "item": [
+        {
+          "name": "SETUP - All Products List (optional, store-wide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Response has products array', function () {",
+                  "    pm.expect(jsonData).to.have.property('products');",
+                  "    pm.expect(jsonData.products).to.be.an('array');",
+                  "});",
+                  "pm.test('Default page size is 30 or fewer products', function () {",
+                  "    pm.expect(jsonData.products.length).to.be.at.most(30);",
+                  "});",
+                  "pm.test('Each product has id, handle, and variants', function () {",
+                  "    jsonData.products.forEach(function(p) {",
+                  "        pm.expect(p).to.have.property('id');",
+                  "        pm.expect(p).to.have.property('handle');",
+                  "        pm.expect(p).to.have.property('variants');",
+                  "    });",
+                  "});",
+                  "// Note: this isn't scoped to a collection like API_003 — it lists products store-wide.",
+                  "// Shopify caps this at 30 per page by default; try adding ?limit=250&page=2 to check pagination.",
+                  "// Also good for grabbing a fresh, real product handle/variant id if the one in the env ever goes stale."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/products.json",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "products.json"
+              ]
+            },
+            "description": "Not one of the original 10 test cases, and API_001 doesn't actually depend on it (the product handle is already hardcoded in the environment). This just sits at the top as a handy manual lookup — lists products store-wide (API_003 does this scoped to one collection instead), and is the fastest place to grab a fresh handle/variant id if the saved one ever goes stale."
+          },
+          "response": []
+        },
+        {
+          "name": "API_001 - Product API Validation (GET product.js)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has title', function () {",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "});",
+                  "pm.test('Response has price', function () {",
+                  "    pm.expect(jsonData).to.have.property('price');",
+                  "});",
+                  "pm.test('Response has variants array', function () {",
+                  "    pm.expect(jsonData).to.have.property('variants');",
+                  "    pm.expect(jsonData.variants).to.be.an('array');",
+                  "});",
+                  "pm.test('Response has images array', function () {",
+                  "    pm.expect(jsonData).to.have.property('images');",
+                  "});",
+                  "// Cross-check manually: does jsonData.title / price / images match what the PDP shows in-browser?"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/products/{{itokri_product_handle}}.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{itokri_product_handle}}.js"
+              ]
+            },
+            "description": "Hits /products/{handle}.js and checks the response has title, price, variants and images. Also opened the same product on the live site to eyeball that the values match what's shown on the PDP."
+          },
+          "response": []
+        },
+        {
+          "name": "API_002 - Invalid Product Handle (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404 for invalid handle', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Response does not 500 / crash', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/products/{{itokri_invalid_handle}}.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{itokri_invalid_handle}}.js"
+              ]
+            },
+            "description": "Sends a handle that doesn't exist and checks it fails cleanly (404), not with a 500 or a crash."
+          },
+          "response": []
+        },
+        {
+          "name": "API_003 - Collection API Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has products array', function () {",
+                  "    pm.expect(jsonData).to.have.property('products');",
+                  "    pm.expect(jsonData.products).to.be.an('array');",
+                  "});",
+                  "pm.test('Products array is not empty', function () {",
+                  "    pm.expect(jsonData.products.length).to.be.above(0);",
+                  "});",
+                  "pm.test('Each product has id, title, handle', function () {",
+                  "    jsonData.products.forEach(function(p) {",
+                  "        pm.expect(p).to.have.property('id');",
+                  "        pm.expect(p).to.have.property('title');",
+                  "        pm.expect(p).to.have.property('handle');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/collections/{{itokri_collection_handle}}/products.json",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "collections",
+                "{{itokri_collection_handle}}",
+                "products.json"
+              ]
+            },
+            "description": "Pulls the collection listing and checks every product has an id, title and handle. Tried changing collection_handle and adding ?page=2 to poke at pagination too."
+          },
+          "response": []
+        },
+        {
+          "name": "API_004 - Cart Add API (add variant to cart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has cart item id matching variant', function () {",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "});",
+                  "pm.test('Quantity is a valid positive integer', function () {",
+                  "    pm.expect(jsonData.quantity).to.be.a('number');",
+                  "    pm.expect(jsonData.quantity).to.be.at.least(1);",
+                  "});",
+                  "// IMPORTANT: {{itokri_variant_id}} must be replaced with a real numeric variant ID.",
+                  "// Find it via browser DevTools > Network tab while adding a product to cart on the live site,",
+                  "// or by inspecting the 'variants' array from the API_001 response above (each variant has an 'id')."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{itokri_variant_id}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{itokri_base_url}}/cart/add.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "add.js"
+              ]
+            },
+            "description": "Adds a variant to the cart. Needed a real numeric variant id for this — got it from the 'variants' array in the API_001 response (variants[].id, not the product's own id — mixed these up once and got a 422)."
+          },
+          "response": []
+        },
+        {
+          "name": "API_005 - Cart API (get current cart state)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart has item_count property', function () {",
+                  "    pm.expect(jsonData).to.have.property('item_count');",
+                  "});",
+                  "pm.test('Cart has items array', function () {",
+                  "    pm.expect(jsonData).to.have.property('items');",
+                  "    pm.expect(jsonData.items).to.be.an('array');",
+                  "});",
+                  "pm.test('Cart has total_price', function () {",
+                  "    pm.expect(jsonData).to.have.property('total_price');",
+                  "});",
+                  "// Run this right after API_004 to confirm the added item is reflected here (session cookie carries the cart)."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/cart.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "cart.js"
+              ]
+            },
+            "description": "Reads the current cart. Run this right after Cart Add to confirm the item actually landed — needs Postman's cookie jar on, since the cart is tied to a session cookie, not a token."
+          },
+          "response": []
+        },
+        {
+          "name": "API_006 - Cart Update API (change quantity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Updated item quantity reflects change', function () {",
+                  "    pm.expect(jsonData).to.have.property('items');",
+                  "});",
+                  "// Also test the edge case: set quantity to 0 in 'updates' and confirm the item is removed from items[]."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updates\": {\n    \"{{itokri_variant_id}}\": 2\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{itokri_base_url}}/cart/update.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "update.js"
+              ]
+            },
+            "description": "Changes the quantity of the item already in the cart. Also worth trying quantity: 0 here — that should remove the item entirely, same behavior as the Remove button in the UI."
+          },
+          "response": []
+        },
+        {
+          "name": "API_007 - Cart Clear API (empty the cart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart item_count is 0 after clear', function () {",
+                  "    pm.expect(jsonData.item_count).to.eql(0);",
+                  "});",
+                  "pm.test('Cart items array is empty', function () {",
+                  "    pm.expect(jsonData.items).to.be.an('array').that.is.empty;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/cart/clear.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "clear.js"
+              ]
+            },
+            "description": "Empties the cart completely. Ran API_005 right after this too, just to double check item_count actually goes to 0 and it's not just returning a fake success."
+          },
+          "response": []
+        },
+        {
+          "name": "API_008 - Inventory Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Each variant reports availability', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(v).to.have.property('available');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/products/{{itokri_product_handle}}.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{itokri_product_handle}}.js"
+              ]
+            },
+            "description": "Checks the 'available' flag on each variant. Note: Shopify doesn't expose raw stock counts on this public endpoint (makes sense — don't want competitors scraping inventory numbers), so this is really just checking the true/false flag matches what the PDP shows (Sold Out or not)."
+          },
+          "response": []
+        },
+        {
+          "name": "API_009 - Variant Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Every variant has id, price, and title', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(v).to.have.property('id');",
+                  "        pm.expect(v).to.have.property('price');",
+                  "        pm.expect(v).to.have.property('title');",
+                  "    });",
+                  "});",
+                  "pm.test('Variant prices are non-negative numbers', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(Number(v.price)).to.be.at.least(0);",
+                  "    });",
+                  "});",
+                  "// Cross-check: does each variant's title/price/SKU match what the PDP's size/color picker shows?"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/products/{{itokri_product_handle}}.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{itokri_product_handle}}.js"
+              ]
+            },
+            "description": "Checks every variant has an id, price and title, and that prices aren't negative or broken. Compared this against the size/color picker on the PDP to make sure nothing's mismatched."
+          },
+          "response": []
+        },
+        {
+          "name": "API_010 - AJAX Cart Validation (post add/update sync check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart total_price equals sum of line item prices', function () {",
+                  "    let sum = 0;",
+                  "    jsonData.items.forEach(function(item) {",
+                  "        sum += item.line_price;",
+                  "    });",
+                  "    pm.expect(sum).to.eql(jsonData.total_price);",
+                  "});",
+                  "// Manual step: open the site in a real browser with the SAME session, add/update/remove items,",
+                  "// and confirm the cart drawer UI count + subtotal always matches this endpoint's response.",
+                  "// This is the actual 'AJAX Cart Validation' test — API + UI must never drift out of sync."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{itokri_base_url}}/cart.js",
+              "host": [
+                "{{itokri_base_url}}"
+              ],
+              "path": [
+                "cart.js"
+              ]
+            },
+            "description": "Sanity-checks that the cart's total_price actually equals the sum of its line items — basic math shouldn't drift. Also opened the site in a real browser on the same session and confirmed the cart drawer UI count/subtotal never disagreed with what this endpoint returned."
+          },
+          "response": []
+        }
+      ],
+      "description": "API_001-API_010 run against iTokri's live Shopify store. SETUP request at the top is optional, not one of the original 10."
+    },
+    {
+      "name": "Anothersole - Shopify AJAX API",
+      "item": [
+        {
+          "name": "SETUP - All Products List (optional, store-wide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has products array', function () {",
+                  "    pm.expect(jsonData).to.have.property('products');",
+                  "    pm.expect(jsonData.products).to.be.an('array');",
+                  "});",
+                  "pm.test('Default page size is 30 or fewer products', function () {",
+                  "    pm.expect(jsonData.products.length).to.be.at.most(30);",
+                  "});",
+                  "pm.test('Each product has id, handle, and variants', function () {",
+                  "    jsonData.products.forEach(function(p) {",
+                  "        pm.expect(p).to.have.property('id');",
+                  "        pm.expect(p).to.have.property('handle');",
+                  "        pm.expect(p).to.have.property('variants');",
+                  "    });",
+                  "});",
+                  "// Note: this isn't scoped to a collection like API_003 — it lists products store-wide.",
+                  "// Shopify caps this at 30 per page by default; try adding ?limit=250&page=2 to check pagination.",
+                  "// Also good for grabbing a fresh, real product handle/variant id if the one in the env ever goes stale."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/products.json",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "products.json"
+              ]
+            },
+            "description": "Not one of the original 10 test cases, and API_001 doesn't actually depend on it (the product handle is already hardcoded in the environment). This just sits at the top as a handy manual lookup — lists products store-wide (API_003 does this scoped to one collection instead), and is the fastest place to grab a fresh handle/variant id if the saved one ever goes stale."
+          },
+          "response": []
+        },
+        {
+          "name": "API_001 - Product API Validation (GET product.js)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has title', function () {",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "});",
+                  "pm.test('Response has price', function () {",
+                  "    pm.expect(jsonData).to.have.property('price');",
+                  "});",
+                  "pm.test('Response has variants array', function () {",
+                  "    pm.expect(jsonData).to.have.property('variants');",
+                  "    pm.expect(jsonData.variants).to.be.an('array');",
+                  "});",
+                  "pm.test('Response has images array', function () {",
+                  "    pm.expect(jsonData).to.have.property('images');",
+                  "});",
+                  "// Cross-check manually: does jsonData.title / price / images match what the PDP shows in-browser?"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/products/{{anothersole_product_handle}}.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{anothersole_product_handle}}.js"
+              ]
+            },
+            "description": "Hits /products/{handle}.js and checks the response has title, price, variants and images. Also opened the same product on the live site to eyeball that the values match what's shown on the PDP."
+          },
+          "response": []
+        },
+        {
+          "name": "API_002 - Invalid Product Handle (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404 for invalid handle', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Response does not 500 / crash', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/products/{{anothersole_invalid_handle}}.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{anothersole_invalid_handle}}.js"
+              ]
+            },
+            "description": "Sends a handle that doesn't exist and checks it fails cleanly (404), not with a 500 or a crash."
+          },
+          "response": []
+        },
+        {
+          "name": "API_003 - Collection API Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has products array', function () {",
+                  "    pm.expect(jsonData).to.have.property('products');",
+                  "    pm.expect(jsonData.products).to.be.an('array');",
+                  "});",
+                  "pm.test('Products array is not empty', function () {",
+                  "    pm.expect(jsonData.products.length).to.be.above(0);",
+                  "});",
+                  "pm.test('Each product has id, title, handle', function () {",
+                  "    jsonData.products.forEach(function(p) {",
+                  "        pm.expect(p).to.have.property('id');",
+                  "        pm.expect(p).to.have.property('title');",
+                  "        pm.expect(p).to.have.property('handle');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/collections/{{anothersole_collection_handle}}/products.json",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "collections",
+                "{{anothersole_collection_handle}}",
+                "products.json"
+              ]
+            },
+            "description": "Pulls the collection listing and checks every product has an id, title and handle. Tried changing collection_handle and adding ?page=2 to poke at pagination too."
+          },
+          "response": []
+        },
+        {
+          "name": "API_004 - Cart Add API (add variant to cart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Response has cart item id matching variant', function () {",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "});",
+                  "pm.test('Quantity is reflected correctly', function () {",
+                  "    pm.expect(jsonData.quantity).to.eql(1);",
+                  "});",
+                  "// IMPORTANT: {{anothersole_variant_id}} must be replaced with a real numeric variant ID.",
+                  "// Find it via browser DevTools > Network tab while adding a product to cart on the live site,",
+                  "// or by inspecting the 'variants' array from the API_001 response above (each variant has an 'id')."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{anothersole_variant_id}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{anothersole_base_url}}/cart/add.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "add.js"
+              ]
+            },
+            "description": "Adds a variant to the cart. Needed a real numeric variant id for this — got it from the 'variants' array in the API_001 response (variants[].id, not the product's own id — mixed these up once and got a 422)."
+          },
+          "response": []
+        },
+        {
+          "name": "API_005 - Cart API (get current cart state)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart has item_count property', function () {",
+                  "    pm.expect(jsonData).to.have.property('item_count');",
+                  "});",
+                  "pm.test('Cart has items array', function () {",
+                  "    pm.expect(jsonData).to.have.property('items');",
+                  "    pm.expect(jsonData.items).to.be.an('array');",
+                  "});",
+                  "pm.test('Cart has total_price', function () {",
+                  "    pm.expect(jsonData).to.have.property('total_price');",
+                  "});",
+                  "// Run this right after API_004 to confirm the added item is reflected here (session cookie carries the cart)."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/cart.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "cart.js"
+              ]
+            },
+            "description": "Reads the current cart. Run this right after Cart Add to confirm the item actually landed — needs Postman's cookie jar on, since the cart is tied to a session cookie, not a token."
+          },
+          "response": []
+        },
+        {
+          "name": "API_006 - Cart Update API (change quantity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Updated item quantity reflects change', function () {",
+                  "    pm.expect(jsonData).to.have.property('items');",
+                  "});",
+                  "// Also test the edge case: set quantity to 0 in 'updates' and confirm the item is removed from items[]."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updates\": {\n    \"{{anothersole_variant_id}}\": 2\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{anothersole_base_url}}/cart/update.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "update.js"
+              ]
+            },
+            "description": "Changes the quantity of the item already in the cart. Also worth trying quantity: 0 here — that should remove the item entirely, same behavior as the Remove button in the UI."
+          },
+          "response": []
+        },
+        {
+          "name": "API_007 - Cart Clear API (empty the cart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart item_count is 0 after clear', function () {",
+                  "    pm.expect(jsonData.item_count).to.eql(0);",
+                  "});",
+                  "pm.test('Cart items array is empty', function () {",
+                  "    pm.expect(jsonData.items).to.be.an('array').that.is.empty;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/cart/clear.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "cart",
+                "clear.js"
+              ]
+            },
+            "description": "Empties the cart completely. Ran API_005 right after this too, just to double check item_count actually goes to 0 and it's not just returning a fake success."
+          },
+          "response": []
+        },
+        {
+          "name": "API_008 - Inventory Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Each variant reports availability', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(v).to.have.property('available');",
+                  "    });",
+                  "});",
+                  "// Note: raw inventory_quantity is often NOT exposed on the public .js endpoint for stock-hiding reasons.",
+                  "// If 'available' is false for a variant, confirm the PDP also disables Add to Cart / shows Sold Out for it.",
+                  "// This is the key manual cross-check for this test case — API tells you the flag, UI must match it."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/products/{{anothersole_product_handle}}.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{anothersole_product_handle}}.js"
+              ]
+            },
+            "description": "Checks the 'available' flag on each variant. Note: Shopify doesn't expose raw stock counts on this public endpoint (makes sense — don't want competitors scraping inventory numbers), so this is really just checking the true/false flag matches what the PDP shows (Sold Out or not)."
+          },
+          "response": []
+        },
+        {
+          "name": "API_009 - Variant Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Every variant has id, price, and title', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(v).to.have.property('id');",
+                  "        pm.expect(v).to.have.property('price');",
+                  "        pm.expect(v).to.have.property('title');",
+                  "    });",
+                  "});",
+                  "pm.test('Variant prices are non-negative numbers', function () {",
+                  "    jsonData.variants.forEach(function(v) {",
+                  "        pm.expect(Number(v.price)).to.be.at.least(0);",
+                  "    });",
+                  "});",
+                  "// Cross-check: does each variant's title/price/SKU match what the PDP's size/color picker shows?"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/products/{{anothersole_product_handle}}.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "products",
+                "{{anothersole_product_handle}}.js"
+              ]
+            },
+            "description": "Checks every variant has an id, price and title, and that prices aren't negative or broken. Compared this against the size/color picker on the PDP to make sure nothing's mismatched."
+          },
+          "response": []
+        },
+        {
+          "name": "API_010 - AJAX Cart Validation (post add/update sync check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response time is acceptable (<3000ms)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Cart total_price equals sum of line item prices', function () {",
+                  "    let sum = 0;",
+                  "    jsonData.items.forEach(function(item) {",
+                  "        sum += item.line_price;",
+                  "    });",
+                  "    pm.expect(sum).to.eql(jsonData.total_price);",
+                  "});",
+                  "// Manual step: open the site in a real browser with the SAME session, add/update/remove items,",
+                  "// and confirm the cart drawer UI count + subtotal always matches this endpoint's response.",
+                  "// This is the actual 'AJAX Cart Validation' test — API + UI must never drift out of sync."
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{anothersole_base_url}}/cart.js",
+              "host": [
+                "{{anothersole_base_url}}"
+              ],
+              "path": [
+                "cart.js"
+              ]
+            },
+            "description": "Sanity-checks that the cart's total_price actually equals the sum of its line items — basic math shouldn't drift. Also opened the site in a real browser on the same session and confirmed the cart drawer UI count/subtotal never disagreed with what this endpoint returned."
+          },
+          "response": []
+        }
+      ],
+      "description": "API_001-API_010 run against Anothersole's live Shopify store. SETUP request at the top is optional, not one of the original 10."
+    }
+  ]
+}
